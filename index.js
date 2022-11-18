@@ -16,118 +16,142 @@ function findRecordTable(tables) {
   return null;
 }
 
+function parseMatchRow(row, headings) {
+  if (headings.textContent[57] == "A") {
+    const [
+      Number,
+      Result,
+      Record,
+      Opponent,
+      Type,
+      RoundTime,
+      Date,
+      Age,
+      Location,
+      Notes,
+    ] = row.querySelectorAll("td");
+
+    const serialNumber = Number?.textContent;
+    const fightResult = Result?.textContent;
+    const tally = Record?.textContent;
+    const foughtAgainst = Opponent?.textContent;
+    const winType = Type?.textContent;
+    const endRound = RoundTime?.textContent;
+    const fightDate = Date?.textContent;
+    const fighterAge = Age?.textContent;
+    const fightLocation = Location?.textContent;
+    const remarks = Notes?.textContent;
+
+    const boxerRecord = {
+      no: serialNumber,
+      result: fightResult,
+      record: tally,
+      opponent: foughtAgainst,
+      type: winType,
+      roundTime: endRound,
+      date: fightDate,
+      age: fighterAge,
+      location: fightLocation,
+      notes: remarks,
+    };
+
+    return boxerRecord;
+  } else {
+    const [
+      Number,
+      Result,
+      Record,
+      Opponent,
+      Type,
+      RoundTime,
+      Date,
+      Location,
+      Notes,
+    ] = row.querySelectorAll("td");
+
+    const serialNumber = Number?.textContent;
+    const fightResult = Result?.textContent;
+    const tally = Record?.textContent;
+    const foughtAgainst = Opponent?.textContent;
+    const winType = Type?.textContent;
+    const endRound = RoundTime?.textContent;
+    const fightDate = Date?.textContent;
+    const fightLocation = Location?.textContent;
+    const remarks = Notes?.textContent;
+
+    const boxerRecord = {
+      no: serialNumber,
+      result: fightResult,
+      record: tally,
+      opponent: foughtAgainst,
+      type: winType,
+      roundTime: endRound,
+      date: fightDate,
+      age: null,
+      location: fightLocation,
+      notes: remarks,
+    };
+
+    return boxerRecord;
+  }
+}
+
+function parseInfoBox(infoboxTable) {
+  if (!infoboxTable) return {};
+
+  const imageBox = infoboxTable.querySelector(".infobox-image");
+  const imageUrl = imageBox?.querySelector("img")?.src;
+
+  // reach etc.. other stuff from infobox
+
+  return { imageUrl: imageUrl };
+}
+
 async function scrapeRecordTable(url) {
+  console.log("URL", url);
+  // request HTML and turn into JSDOM
   const response = await axios.get(url);
   const html = response.data;
   const jsdom = new JSDOM(html);
   const document = jsdom.window.document;
+  // Get the name of the fighter
+  const fighterName = document
+    .querySelector("h1")
+    .textContent.replace(" (boxer)", "");
+  // Parse the fighter info
+  const infoboxTable = document.querySelector(".infobox");
+  const fighterInfo = parseInfoBox(infoboxTable);
+  console.log(fighterInfo);
+  // Parse the record
   const tables = document.querySelectorAll("table");
-  //console.log(tables.length);
-  let tableToScrape = findRecordTable(tables);
-  if (!tableToScrape) return;
+  let fightingRecordTable = findRecordTable(tables);
+  if (!fightingRecordTable) return;
+  let record = parseRecord(fightingRecordTable);
 
-  //console.log(tableToScrape);
-  const [headings, ...rows] = tableToScrape.querySelectorAll("tr");
+  // Write to a file
+  const json = JSON.stringify({
+    name: fighterName,
+    ...fighterInfo,
+    record: record,
+  });
+
+  fs.writeFileSync(
+    `./boxers/${fighterName.replaceAll(" ", "_")}.json`,
+    json.replace(/\\n/g, "")
+  );
+}
+
+function parseRecord(fightingRecordTable) {
+  const [headings, ...rows] = fightingRecordTable.querySelectorAll("tr");
 
   let record = [];
-  let heads = [];
 
-  if (headings.textContent[57] == "A") {
-    for (row of rows) {
-      const [
-        Number,
-        Result,
-        Record,
-        Opponent,
-        Type,
-        RoundTime,
-        Date,
-        Age,
-        Location,
-        Notes,
-      ] = row.querySelectorAll("td");
-
-      const opponentName = Opponent?.textContent;
-      const serialNumber = Number?.textContent;
-      const fightResult = Result?.textContent;
-      const tally = Record?.textContent;
-      const foughtAgainst = Opponent?.textContent;
-      const winType = Type?.textContent;
-      const endRound = RoundTime?.textContent;
-      const fightDate = Date?.textContent;
-      const fighterAge = Age?.textContent;
-      const fightLocation = Location?.textContent;
-      const remarks = Notes?.textContent;
-      //console.log(opponentName,serialNumber,fightResult,tally,foughtAgainst,winType,endRound,fightDate,fighterAge,fightLocation,remarks);
-
-      const boxerRecord = {
-        No: serialNumber,
-        Result: fightResult,
-        Record: tally,
-        Opponent: foughtAgainst,
-        Type: winType,
-        Round_Time: endRound,
-        Date: fightDate,
-        Age: fighterAge,
-        Location: fightLocation,
-        Notes: remarks,
-      };
-      //console.log(boxerRecord);
-      record.push(boxerRecord);
-    }
-    //console.log(record);
-    const json = JSON.stringify(record);
-    const recordBoxer = url.split("https://en.wikipedia.org/wiki/");
-    fs.writeFileSync(`${recordBoxer}.json`, json.replace(/\\n/g, ""));
-  } else {
-    for (row of rows) {
-      const [
-        Number,
-        Result,
-        Record,
-        Opponent,
-        Type,
-        RoundTime,
-        Date,
-        //Age,
-        Location,
-        Notes,
-      ] = row.querySelectorAll("td");
-
-      const opponentName = Opponent?.textContent;
-      const serialNumber = Number?.textContent;
-      const fightResult = Result?.textContent;
-      const tally = Record?.textContent;
-      const foughtAgainst = Opponent?.textContent;
-      const winType = Type?.textContent;
-      const endRound = RoundTime?.textContent;
-      const fightDate = Date?.textContent;
-      // const fighterAge = Age?.textContent;
-      const fightLocation = Location?.textContent;
-      const remarks = Notes?.textContent;
-      //console.log(opponentName,serialNumber,fightResult,tally,foughtAgainst,winType,endRound,fightDate,fighterAge,fightLocation,remarks);
-
-      const boxerRecord = {
-        No: serialNumber,
-        Result: fightResult,
-        Record: tally,
-        Opponent: foughtAgainst,
-        Type: winType,
-        Round_Time: endRound,
-        Date: fightDate,
-        // Age: fighterAge,
-        Location: fightLocation,
-        Notes: remarks,
-      };
-      //console.log(boxerRecord);
-      record.push(boxerRecord);
-    }
-    //console.log(record);
+  for (row of rows) {
+    const match = parseMatchRow(row, headings);
+    record.push(match);
   }
-  const json = JSON.stringify(record);
-  const recordBoxer = url.split("https://en.wikipedia.org/wiki/");
-  fs.writeFileSync(`${recordBoxer}.json`, json.replace(/\\n/g, ""));
-  //console.log(json.replace(/\\n/g, ""));
+
+  return record;
 }
 
 //scrapeRecordTable();
